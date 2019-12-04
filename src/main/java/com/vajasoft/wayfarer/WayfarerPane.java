@@ -57,7 +57,7 @@ public class WayfarerPane implements Initializable {
 
     private static final StringConverter<File> FILE_TO_STRING_CONVERTER = new FileToStringConverter();
     private static final StringConverter<String> DUMMY_STRING_CONVERTER = new DummyStringConverter();
-    private static final File CURRENT_FOLDER = new File(".");
+    private static final File CURRENT_FOLDER = new File(".").getAbsoluteFile();
 
     private Window mainWindow;
     private AboutBox aboutBox;
@@ -211,7 +211,7 @@ public class WayfarerPane implements Initializable {
     @FXML
     private void onCmdBrowseRoot(ActionEvent event) {
         File root = getRootFolder();
-        if (root != dirChooser.getInitialDirectory()) {
+        if (root != null && root != dirChooser.getInitialDirectory()) {
             dirChooser.setInitialDirectory(root);
         }
         File choice = dirChooser.showDialog(ctx.getMainWindow());
@@ -239,9 +239,9 @@ public class WayfarerPane implements Initializable {
         Thread th = new Thread(searcher);
         th.setDaemon(true);
         th.start();
-        storeCriteria(fldRoot);
-        storeCriteria(fldFileMask);
-        storeCriteria(fldSearchText);
+        rememberValue(fldRoot);
+        rememberValue(fldFileMask);
+        rememberValue(fldSearchText);
 //        cmdStart.setDisable(false);
     }
 
@@ -269,16 +269,18 @@ public class WayfarerPane implements Initializable {
         });
     }
 
-    private <T> void storeCriteria(ComboBox<T> combo) {
+    private <T> void rememberValue(ComboBox<T> combo) {
         T value = combo.getValue();
-        ObservableList<T> items = combo.getItems();
-        int ix = items.indexOf(value);
-        if (ix > 0) {
-            items.remove(value);
-        }
-        if (ix != 0) {
-            items.add(0, value);
-            combo.getSelectionModel().select(value);
+        if (value != null) {
+            ObservableList<T> items = combo.getItems();
+            int ix = items.indexOf(value);
+            if (ix > 0) {
+                items.remove(value);
+            }
+            if (ix != 0) {
+                items.add(0, value);
+                combo.getSelectionModel().select(value);
+            }
         }
     }
 

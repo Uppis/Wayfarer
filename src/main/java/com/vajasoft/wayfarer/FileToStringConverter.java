@@ -18,7 +18,7 @@ class FileToStringConverter extends StringConverter<File> {
 
     @Override
     public File fromString(String path) {
-        return new File(path);
+        return path == null || path.isEmpty() ? null : new File(path);
     }
     
 }
