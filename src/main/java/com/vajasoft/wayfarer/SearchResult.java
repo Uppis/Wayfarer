@@ -5,20 +5,27 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 /**
  *
  * @author Z705692
  */
 public class SearchResult {
+    private final BiConsumer<Path, Boolean> progressHandler;
     private final Map<Path, List<String>> filesHit;
     private final long searchStarted;
     private int nbrofFilesChecked;
     private int nbrofFilesSearched;
 
-    public SearchResult() {
-        searchStarted = System.currentTimeMillis();
-        filesHit  = new HashMap<>();
+    public SearchResult(BiConsumer<Path, Boolean> progressHandler) {
+        this.searchStarted = System.currentTimeMillis();
+        this.filesHit  = new HashMap<>();
+        this.progressHandler = progressHandler;
+    }
+
+    public void report(Path file) {
+        progressHandler.accept(file, false);
     }
 
     public void storeMatch(Path file, int lineNbr, String line) {
@@ -26,6 +33,7 @@ public class SearchResult {
         if (lines == null) {
             lines = new ArrayList<>();
             filesHit.put(file, lines);
+            progressHandler.accept(file, true);
         }
         lines.add(lineNbr + "\t" + line);
     }

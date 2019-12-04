@@ -93,7 +93,7 @@
         </GridPane>
         <SplitPane dividerPositions="0.5" focusTraversable="true" VBox.vgrow="ALWAYS">
             <items>
-                <TableView fx:id="lstFilesFound" onMouseClicked="#onLstFilesFoundDblClicked">
+                <TableView fx:id="lstFilesFound" onMouseClicked="#onOpenMatchedFile">
                     <columns>
                         <TableColumn id="filename" editable="false" minWidth="30.0" prefWidth="-1.0" text="Name" />
                         <TableColumn id="folder" editable="false" minWidth="50.0" prefWidth="-1.0" text="Location" />
@@ -104,7 +104,9 @@
                     <contextMenu>
                         <ContextMenu>
                             <items>
-                                <MenuItem fx:id="mnuOpenMatchedFile" mnemonicParsing="false" onAction="#onMnuOpenMatchedFile" text="Open" />
+                                <MenuItem fx:id="mnuOpenMatchedFile" mnemonicParsing="false" onAction="#onOpenMatchedFile" text="Open" />
+                                <MenuItem fx:id="mnuCopyMatchedFilePath" mnemonicParsing="false" onAction="#onMnuCopyMatchedFilePath" text="Copy path" />
+                                <MenuItem fx:id="mnuOpenMatchedFileFolder" mnemonicParsing="false" onAction="#onMnuOpenMatchedFileFolder" text="Open folder" />
                             </items>
                         </ContextMenu>
                     </contextMenu>
@@ -138,13 +140,13 @@
         </SplitPane>
         <HBox fx:id="statusBar" spacing="12.0" VBox.vgrow="NEVER">
             <children>
-                <Label fx:id="fldStatus" />
+                <Label fx:id="fldStatus" maxWidth="1.7976931348623157E308" prefWidth="400.0" HBox.hgrow="ALWAYS" />
                 <Separator orientation="VERTICAL" />
-                <Label fx:id="fldNbrOfFiles" prefHeight="21.0" HBox.hgrow="NEVER" />
+                <Label fx:id="fldNbrOfFiles" maxWidth="1.7976931348623157E308" prefWidth="200.0" />
                 <Pane HBox.hgrow="ALWAYS" />
             </children>
             <VBox.margin>
-                <Insets bottom="6.0" left="12.0" right="12.0" />
+                <Insets bottom="3.0" left="12.0" right="12.0" top="6.0" />
             </VBox.margin>
         </HBox>
     </children>

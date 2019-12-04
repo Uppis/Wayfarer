@@ -15,10 +15,10 @@ public class SearchTask extends Task<Void> {
     private final Path rootFolder;
     private final FileTreeWalker walker;
 
-    public SearchTask(Path rootFolder, String filemask, String txtToSearch, boolean isSearchTextCaseSensitive, SearchResult searchResults, ObservableList<Path> output) {
+    public SearchTask(SearchCriteria crit, SearchResult searchResults) {
         super();
-        this.rootFolder = rootFolder;
-        this.walker = new FileTreeWalker(filemask, txtToSearch, isSearchTextCaseSensitive, searchResults, output);
+        this.rootFolder = crit.getRootFolder();
+        this.walker = new FileTreeWalker(crit, searchResults);
     }
 
     public void cancelSearch() {

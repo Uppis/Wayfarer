@@ -21,8 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
-import javafx.application.Platform;
-import javafx.collections.ObservableList;
 
 public class FileTreeWalker extends SimpleFileVisitor<Path> {
     private static final Charset CHARSET = Charset.forName(System.getProperty("file.encoding"));
@@ -31,18 +29,17 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
     private final List<PathMatcher> fileMatchers;
     private final Pattern txtToSearch;
     private final SearchResult searchResults;
-    private final ObservableList<Path> output;
     private volatile FileVisitResult result = FileVisitResult.CONTINUE;
 
-    public FileTreeWalker(String filemask, String txtToSearch, boolean isSearchTextCaseSensitive, SearchResult searchResults, ObservableList<Path> output) {
-        this.fileMatchers = getMatchers(filemask);
-        if (txtToSearch == null || txtToSearch.isEmpty()) {
+    public FileTreeWalker(SearchCriteria crit, SearchResult searchResults) {
+        this.fileMatchers = getMatchers(crit.getFilemask());
+        String searchText = crit.getTxtToSearch();
+        if (searchText == null || searchText.isEmpty()) {
             this.txtToSearch = null;
         } else {
-            this.txtToSearch = isSearchTextCaseSensitive ? Pattern.compile(txtToSearch) : Pattern.compile(txtToSearch, Pattern.CASE_INSENSITIVE);
+            this.txtToSearch = crit.isIsSearchTextCaseSensitive() ? Pattern.compile(searchText) : Pattern.compile(searchText, Pattern.CASE_INSENSITIVE);
         }
         this.searchResults = searchResults;
-        this.output = output;
     }
 
     public void cancelSearch() {
@@ -50,8 +47,16 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
     }
 
     @Override
+    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+        LOG.finest(supply("Visiting folder {0}", dir.toString()));
+        searchResults.incrementNbrofFilesChecked();
+        return result;
+    }
+
+    @Override
     public FileVisitResult visitFile(final Path file, BasicFileAttributes attrs) {
         LOG.fine(supply("Visiting file {0}", file.toString()));
+        searchResults.report(file);
         searchResults.incrementNbrofFilesChecked();
         try {
             FileChannel channel = FileChannel.open(file, StandardOpenOption.READ);
@@ -66,12 +71,6 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
                         line = reader.readLine();
                     }
                     searchResults.incrementNbrofFilesSearched();
-
-                    if (searchResults.containsFile(file)) {
-                        Platform.runLater(() -> {
-                            output.add(file);
-                        });
-                    }
                     break;  // One match is enough
                 }
             }
