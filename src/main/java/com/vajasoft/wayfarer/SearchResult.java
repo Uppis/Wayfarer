@@ -1,6 +1,7 @@
 package com.vajasoft.wayfarer;
 
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +29,7 @@ public class SearchResult {
         progressHandler.accept(file, false);
     }
 
-    public void storeMatch(Path file, int lineNbr, String line) {
+    public void storeMatch(Path file, BasicFileAttributes attrs, int lineNbr, String line) {
         List<String> lines = filesHit.get(file);
         if (lines == null) {
             lines = new ArrayList<>();

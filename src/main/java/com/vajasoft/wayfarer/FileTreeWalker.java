@@ -66,7 +66,7 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
                     String line = reader.readLine();
                     while (line != null && result != FileVisitResult.TERMINATE) {
                         if (txtToSearch == null || txtToSearch.matcher(line).find()) {
-                            searchResults.storeMatch(file, reader.getLineNumber(), line);
+                            searchResults.storeMatch(file, attrs, reader.getLineNumber(), line);
                         }
                         line = reader.readLine();
                     }
