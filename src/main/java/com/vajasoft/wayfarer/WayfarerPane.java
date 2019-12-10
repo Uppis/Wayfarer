@@ -45,6 +45,8 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
@@ -56,6 +58,7 @@ import javafx.util.StringConverter;
  */
 public class WayfarerPane implements Initializable {
 
+    private static final String PREF_NODE_SETTINGS = "settings";
     private static final String PREF_NODE_RECENT_ROOTS = "recentroots";
     private static final String PREF_NODE_RECENT_FILE_MASKS = "recentmasks";
     private static final String PREF_NODE_RECENT_SEARCH_TEXTS = "recentsearches";
@@ -98,7 +101,7 @@ public class WayfarerPane implements Initializable {
     @FXML
     private MenuItem mnuOpenMatchedFileFolder;
     @FXML
-    private TextArea fldHits;
+    private TextFlow fldHits;
     @FXML
     private TextArea fldSummary;
     @FXML
@@ -115,7 +118,7 @@ public class WayfarerPane implements Initializable {
         dirChooser = new DirectoryChooser();
 //        searchResults = new HashMap<>();
         fldRoot.setConverter(FILE_TO_STRING_CONVERTER);
-        getRecentCriteria();
+        loadStateFromPrefs();
         lstFilesFound.getColumns().forEach((TableColumn<MatchedFile, ?> t) -> {
             ((TableColumn<MatchedFile, String>) t).setCellValueFactory(WayfarerPane::getCellValue);
         });
@@ -154,13 +157,17 @@ public class WayfarerPane implements Initializable {
     }
 
     private void selectHittedFile(ObservableValue<? extends MatchedFile> ov, MatchedFile oldValue, MatchedFile newValue) {
-        fldHits.clear();
+        fldHits.getChildren().clear();
         fldStatus.setText("");
         if (newValue != null) {
             fldStatus.setText("Selected item " + newValue.getAttrs().size() + " bytes");
             List<MatchedLine> lines = newValue.getLines();
-            lines.forEach((MatchedLine li) -> fldHits.appendText(li.getLineNbr() + "\t" + li.getLine() + "\n"));
+            lines.forEach(this::lineToText);
         }
+    }
+
+    private void lineToText(MatchedLine line) {
+        fldHits.getChildren().add(new Text(line.getLineNbr() + "\t" + line.getLine() + "\n"));
     }
 
     private void showSummary() {
@@ -252,7 +259,7 @@ public class WayfarerPane implements Initializable {
 
     private void resetOutputs() {
         lstFilesFound.getItems().clear();
-        fldHits.clear();
+        fldHits.getChildren().clear();
         fldSummary.clear();
         fldStatus.setText("");
         fldNbrOfFiles.setText("");
@@ -305,8 +312,10 @@ public class WayfarerPane implements Initializable {
         return ret;
     }
 
-    private void getRecentCriteria() {
+    private void loadStateFromPrefs() {
         try {
+            pnlWayfarer.setPrefHeight(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stageheight", "700")));
+            pnlWayfarer.setPrefWidth(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stagewidth", "1200")));
             initCombo(fldFileMask, PREF_NODE_RECENT_FILE_MASKS, DUMMY_STRING_CONVERTER);
             initCombo(fldSearchText, PREF_NODE_RECENT_SEARCH_TEXTS, DUMMY_STRING_CONVERTER);
             initCombo(fldRoot, PREF_NODE_RECENT_ROOTS, FILE_TO_STRING_CONVERTER);
@@ -315,8 +324,10 @@ public class WayfarerPane implements Initializable {
         }
     }
 
-    private void saveRecentCriteria() {
+    private void saveStateToPrefs() {
         try {
+            userPrefs.putPreference(PREF_NODE_SETTINGS, "stageheight", String.valueOf(pnlWayfarer.getHeight()));
+            userPrefs.putPreference(PREF_NODE_SETTINGS, "stagewidth", String.valueOf(pnlWayfarer.getWidth()));
             userPrefs.saveRecentItems(fldFileMask.getItems(), PREF_NODE_RECENT_FILE_MASKS, DUMMY_STRING_CONVERTER);
             userPrefs.saveRecentItems(fldSearchText.getItems(), PREF_NODE_RECENT_SEARCH_TEXTS, DUMMY_STRING_CONVERTER);
             userPrefs.saveRecentItems(fldRoot.getItems(), PREF_NODE_RECENT_ROOTS, FILE_TO_STRING_CONVERTER);
@@ -336,7 +347,7 @@ public class WayfarerPane implements Initializable {
     }
 
     private void doExit() {
-        saveRecentCriteria();
+        saveStateToPrefs();
         Util.closeWindow(pnlWayfarer);
     }
 

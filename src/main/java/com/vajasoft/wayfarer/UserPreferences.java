@@ -14,6 +14,17 @@ public class UserPreferences {
         userPrefs = Preferences.userNodeForPackage(forClass);
     }
 
+    public String getPreference(String fromNode, String key, String defVal) {
+        Preferences node = userPrefs.node(fromNode);
+        return node.get(key, defVal);
+    }
+
+    public void putPreference(String toNode, String key, String val) throws BackingStoreException {
+        Preferences node = userPrefs.node(toNode);
+        node.put(key, val);
+        node.flush();
+    }
+
     public <T> List<T> loadRecentItems(String fromNode, StringConverter<T> converter) throws BackingStoreException {
         Preferences node = userPrefs.node(fromNode);
         String[] keys = node.keys();

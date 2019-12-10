@@ -10,6 +10,7 @@
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
@@ -26,8 +27,9 @@
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.text.TextFlow?>
 
-<VBox fx:id="pnlWayfarer" prefHeight="600.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.vajasoft.wayfarer.WayfarerPane">
+<VBox fx:id="pnlWayfarer" prefHeight="700.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.vajasoft.wayfarer.WayfarerPane">
     <children>
         <MenuBar focusTraversable="true" VBox.vgrow="NEVER">
             <menus>
@@ -96,7 +98,7 @@
                     <columns>
                         <TableColumn id="filename" editable="false" maxWidth="500.0" minWidth="30.0" prefWidth="-1.0" text="Name" />
                         <TableColumn id="folder" editable="false" maxWidth="1000.0" minWidth="50.0" prefWidth="-1.0" text="Location" />
-                  <TableColumn id="modified" editable="false" maxWidth="200.0" minWidth="20.0" prefWidth="-1.0" text="Last modified" />
+                  <TableColumn id="modified" editable="false" maxWidth="300.0" minWidth="20.0" prefWidth="-1.0" text="Last modified" />
                     </columns>
                     <columnResizePolicy>
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
@@ -115,11 +117,11 @@
                     <tabs>
                         <Tab fx:id="tabHits" closable="false" text="Hits">
                             <content>
-                                <VBox>
-                                    <children>
-                                        <TextArea fx:id="fldHits" editable="false" VBox.vgrow="ALWAYS" />
-                                    </children>
-                                </VBox>
+                        <ScrollPane>
+                           <content>
+                              <TextFlow fx:id="fldHits" maxWidth="1.7976931348623157E308" />
+                           </content>
+                        </ScrollPane>
                             </content>
                         </Tab>
                         <Tab fx:id="tabSummary" closable="false" text="Summary">

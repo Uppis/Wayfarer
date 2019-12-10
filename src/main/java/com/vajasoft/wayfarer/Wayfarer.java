@@ -27,18 +27,18 @@ public class Wayfarer extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         ctx = new AppContext(stage, getParameters());
-        WayfarerPane controller = (WayfarerPane) setSceneContent(Wayfarer.class.getResource("WayfarerPane.fxml"), stage, 1200, 600);
+        WayfarerPane controller = (WayfarerPane) setSceneContent(Wayfarer.class.getResource("WayfarerPane.fxml"), stage);
         setIcons(stage);
         controller.setAppContext(ctx);
         stage.addEventHandler(WindowEvent.ANY, controller::handleWindowEvent);
         stage.show();
     }
 
-    private Initializable setSceneContent(URL fromFxml, Stage toStage, double width, double height) throws Exception {
+    private Initializable setSceneContent(URL fromFxml, Stage toStage) throws Exception {
         FXMLLoader loader = new FXMLLoader();
         loader.setLocation(fromFxml);
         Parent root = (Parent) loader.load();
-        Scene scene = new Scene(root, width, height);
+        Scene scene = new Scene(root);
         toStage.setScene(scene);
         return (Initializable) loader.getController();
     }
