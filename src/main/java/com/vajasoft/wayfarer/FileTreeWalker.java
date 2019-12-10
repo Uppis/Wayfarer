@@ -20,9 +20,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class FileTreeWalker extends SimpleFileVisitor<Path> {
+
     private static final Charset CHARSET = Charset.forName(System.getProperty("file.encoding"));
     private static final CharsetDecoder DECODER = CHARSET.newDecoder().onUnmappableCharacter(CodingErrorAction.IGNORE).onMalformedInput(CodingErrorAction.IGNORE);
 
@@ -58,24 +60,31 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
         LOG.fine(supply("Visiting file {0}", file.toString()));
         searchResults.report(file);
         searchResults.incrementNbrofFilesChecked();
-        try {
-            FileChannel channel = FileChannel.open(file, StandardOpenOption.READ);
-            LineNumberReader reader = new LineNumberReader(Channels.newReader(channel, DECODER, -1));
-            for (PathMatcher m : fileMatchers) {
-                if (m.matches(file)) {
-                    String line = reader.readLine();
-                    while (line != null && result != FileVisitResult.TERMINATE) {
-                        if (txtToSearch == null || txtToSearch.matcher(line).find()) {
-                            searchResults.storeMatch(file, attrs, reader.getLineNumber(), line);
+        if (pathMatches(file)) {
+            try {
+                FileChannel channel = FileChannel.open(file, StandardOpenOption.READ);
+                LineNumberReader reader = new LineNumberReader(Channels.newReader(channel, DECODER, -1));
+                String line = reader.readLine();
+                while (line != null && result != FileVisitResult.TERMINATE) {
+                    if (txtToSearch == null) {
+                        MatchedFile match = searchResults.matchFoundInFile(file, attrs);
+                        match.matchingLineFound(line, reader.getLineNumber());
+                    } else {
+                        Matcher matcher = txtToSearch.matcher(line);
+                        if (matcher.find()) {
+                            MatchedFile match = searchResults.matchFoundInFile(file, attrs);
+                            MatchedLine matchingLine = match.matchingLineFound(line, reader.getLineNumber());
+                            do {
+                                matchingLine.addMatch(matcher.start(), matcher.end());
+                            } while (matcher.find());
                         }
-                        line = reader.readLine();
                     }
-                    searchResults.incrementNbrofFilesSearched();
-                    break;  // One match is enough
+                    line = reader.readLine();
                 }
+                searchResults.incrementNbrofFilesSearched();
+            } catch (IOException ex) {
+                LOG.warning(supply("Exception in visiting {0}: {1}", file.toString(), ex));
             }
-        } catch (IOException ex) {
-            LOG.warning(supply("Exception in visiting {0}: {1}", file.toString(), ex));
         }
         return result;
     }
@@ -97,5 +106,14 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
             ret.add(FileSystems.getDefault().getPathMatcher("glob:**/" + mask));
         }
         return ret;
+    }
+
+    private boolean pathMatches(Path file) {
+        for (PathMatcher m : fileMatchers) {
+            if (m.matches(file)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

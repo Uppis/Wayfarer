@@ -6,9 +6,14 @@ import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.text.NumberFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
@@ -85,7 +90,7 @@ public class WayfarerPane implements Initializable {
     @FXML
     private CheckBox optSearchTextCaseSensitive;
     @FXML
-    private TableView<Path> lstFilesFound;
+    private TableView<MatchedFile> lstFilesFound;
     @FXML
     private MenuItem mnuOpenMatchedFile;
     @FXML
@@ -111,8 +116,8 @@ public class WayfarerPane implements Initializable {
 //        searchResults = new HashMap<>();
         fldRoot.setConverter(FILE_TO_STRING_CONVERTER);
         getRecentCriteria();
-        lstFilesFound.getColumns().forEach((TableColumn<Path, ?> t) -> {
-            ((TableColumn<Path, String>) t).setCellValueFactory(WayfarerPane::getCellValue);
+        lstFilesFound.getColumns().forEach((TableColumn<MatchedFile, ?> t) -> {
+            ((TableColumn<MatchedFile, String>) t).setCellValueFactory(WayfarerPane::getCellValue);
         });
         lstFilesFound.getSelectionModel().selectedItemProperty().addListener(this::selectHittedFile);
         FileListEmpty fileListEmptyProp = new FileListEmpty(lstFilesFound.getItems());
@@ -132,29 +137,29 @@ public class WayfarerPane implements Initializable {
         }
     }
 
-    private static ObservableValue<String> getCellValue(TableColumn.CellDataFeatures<Path, String> cellData) {
-        Path path = cellData.getValue();
+    private static ObservableValue<String> getCellValue(TableColumn.CellDataFeatures<MatchedFile, String> cellData) {
+        Path path = cellData.getValue().getFile();
         switch (cellData.getTableColumn().getId()) {
             case "filename":
                 return new SimpleStringProperty(path.getFileName().toString());
             case "folder":
                 return new SimpleStringProperty(path.getParent().toString());
+            case "modified":
+                FileTime ft = cellData.getValue().getAttrs().lastModifiedTime();
+                Instant inst = ft.toInstant();
+                LocalDateTime ldt = LocalDateTime.ofInstant(inst, ZoneId.of("Europe/Helsinki"));
+                return new SimpleStringProperty(ldt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)));
         }
         return null;
     }
 
-    private void selectHittedFile(ObservableValue<? extends Path> ov, Path oldValue, Path newValue) {
+    private void selectHittedFile(ObservableValue<? extends MatchedFile> ov, MatchedFile oldValue, MatchedFile newValue) {
         fldHits.clear();
         fldStatus.setText("");
         if (newValue != null) {
-            List<String> hits = searchResults.getFilesHit().get(newValue);
-            if (hits != null) {
-                try {
-                    fldStatus.setText("Selected item: " + Files.size(newValue));
-                } catch (IOException ex) {
-                }
-                hits.forEach((String t) -> fldHits.appendText(t + "\n"));
-            }
+            fldStatus.setText("Selected item " + newValue.getAttrs().size() + " bytes");
+            List<MatchedLine> lines = newValue.getLines();
+            lines.forEach((MatchedLine li) -> fldHits.appendText(li.getLineNbr() + "\t" + li.getLine() + "\n"));
         }
     }
 
@@ -258,13 +263,13 @@ public class WayfarerPane implements Initializable {
         searcher.cancelSearch();
     }
 
-    private void showProgress(Path file, Boolean isMatch) {
+    private void showProgress(Path path, MatchedFile matchedFile) {
         Platform.runLater(() -> {
-            if (isMatch) {
-                lstFilesFound.getItems().add(file);
-                fldNbrOfFiles.setText("Hits found from " + lstFilesFound.getItems().size() + " files");
+            if (matchedFile != null) {
+                lstFilesFound.getItems().add(matchedFile);
+                fldNbrOfFiles.setText(lstFilesFound.getItems().size() + " items");
             } else {
-                fldStatus.setText("Visiting " + file.toString());
+                fldStatus.setText("Visiting " + path.toString());
             }
         });
     }
@@ -381,10 +386,10 @@ public class WayfarerPane implements Initializable {
     }
 
     private void handleFileAction(FileActionHandler handler) {
-        Path selectedItem = lstFilesFound.getSelectionModel().getSelectedItem();
+        MatchedFile selectedItem = lstFilesFound.getSelectionModel().getSelectedItem();
         if (selectedItem != null) {
             try {
-                handler.handle(selectedItem.toFile());
+                handler.handle(selectedItem.getFile().toFile());
             } catch (IOException ex) {
                 Logger.LOG.warning(supply("File operation failed: ", ex));
             }

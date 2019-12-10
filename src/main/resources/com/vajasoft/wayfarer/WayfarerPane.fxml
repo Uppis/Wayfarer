@@ -23,12 +23,11 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox fx:id="pnlWayfarer" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.vajasoft.wayfarer.WayfarerPane">
+<VBox fx:id="pnlWayfarer" prefHeight="600.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.vajasoft.wayfarer.WayfarerPane">
     <children>
         <MenuBar focusTraversable="true" VBox.vgrow="NEVER">
             <menus>
@@ -91,12 +90,13 @@
                 <Insets left="12.0" right="12.0" top="12.0" />
             </VBox.margin>
         </GridPane>
-        <SplitPane dividerPositions="0.5" focusTraversable="true" VBox.vgrow="ALWAYS">
+        <SplitPane dividerPositions="0.63" focusTraversable="true" VBox.vgrow="ALWAYS">
             <items>
                 <TableView fx:id="lstFilesFound" onMouseClicked="#onOpenMatchedFile">
                     <columns>
-                        <TableColumn id="filename" editable="false" minWidth="30.0" prefWidth="-1.0" text="Name" />
-                        <TableColumn id="folder" editable="false" minWidth="50.0" prefWidth="-1.0" text="Location" />
+                        <TableColumn id="filename" editable="false" maxWidth="500.0" minWidth="30.0" prefWidth="-1.0" text="Name" />
+                        <TableColumn id="folder" editable="false" maxWidth="1000.0" minWidth="50.0" prefWidth="-1.0" text="Location" />
+                  <TableColumn id="modified" editable="false" maxWidth="200.0" minWidth="20.0" prefWidth="-1.0" text="Last modified" />
                     </columns>
                     <columnResizePolicy>
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
@@ -140,10 +140,9 @@
         </SplitPane>
         <HBox fx:id="statusBar" spacing="12.0" VBox.vgrow="NEVER">
             <children>
-                <Label fx:id="fldStatus" maxWidth="1.7976931348623157E308" prefWidth="400.0" HBox.hgrow="ALWAYS" />
+                <Label fx:id="fldNbrOfFiles" maxWidth="1.7976931348623157E308" prefWidth="100.0" />
                 <Separator orientation="VERTICAL" />
-                <Label fx:id="fldNbrOfFiles" maxWidth="1.7976931348623157E308" prefWidth="200.0" />
-                <Pane HBox.hgrow="ALWAYS" />
+                <Label fx:id="fldStatus" maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS" />
             </children>
             <VBox.margin>
                 <Insets bottom="3.0" left="12.0" right="12.0" top="6.0" />

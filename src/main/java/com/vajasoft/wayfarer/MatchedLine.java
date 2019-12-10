@@ -1,18 +1,15 @@
 package com.vajasoft.wayfarer;
 
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class MatchInfo {
-    private final BasicFileAttributes attrs;
+public class MatchedLine {
     private final String line;
     private final int lineNbr;
     private final List<Integer[]> matches;
 
-    public MatchInfo(BasicFileAttributes attrs, String line, int lineNbr) {
-        this.attrs = attrs;
+    public MatchedLine(String line, int lineNbr) {
         this.line = line;
         this.lineNbr = lineNbr;
         this.matches = new ArrayList<>();
@@ -20,10 +17,6 @@ public class MatchInfo {
 
     public void addMatch(int begin, int end) {
         matches.add(new Integer[]{begin, end});
-    }
-
-    public BasicFileAttributes getAttrs() {
-        return attrs;
     }
 
     public String getLine() {
@@ -36,5 +29,9 @@ public class MatchInfo {
 
     public List<Integer[]> getMatches() {
         return matches;
+    }
+
+    public int getTotalNbrofHits() {
+        return matches.isEmpty() ? 1 : matches.size();
     }
 }
