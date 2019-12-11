@@ -75,7 +75,7 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
                             MatchedFile match = searchResults.matchFoundInFile(file, attrs);
                             MatchedLine matchingLine = match.matchingLineFound(line, reader.getLineNumber());
                             do {
-                                matchingLine.addMatch(matcher.start(), matcher.end());
+                                matchingLine.addMatch(matcher.start(), matcher.end() - 1);  // end == offset AFTER the last character matched
                             } while (matcher.find());
                         }
                     }

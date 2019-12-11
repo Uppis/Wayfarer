@@ -9,17 +9,15 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.text.NumberFormat;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -43,10 +41,8 @@ import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
+import javafx.scene.web.WebView;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
@@ -101,15 +97,20 @@ public class WayfarerPane implements Initializable {
     @FXML
     private MenuItem mnuOpenMatchedFileFolder;
     @FXML
-    private TextFlow fldHits;
+    private WebView fldHits;
     @FXML
     private TextArea fldSummary;
-    @FXML
-    private HBox statusBar;
     @FXML
     private Label fldNbrOfFiles;
     @FXML
     private Label fldStatus;
+    @FXML
+    private TableColumn<MatchedFile, String> colFilename;
+    @FXML
+    private TableColumn<MatchedFile, String> colFolder;
+    @FXML
+    private TableColumn<MatchedFile, FileTime> colLastModified;
+    private int maxItemsInCombos;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -119,9 +120,15 @@ public class WayfarerPane implements Initializable {
 //        searchResults = new HashMap<>();
         fldRoot.setConverter(FILE_TO_STRING_CONVERTER);
         loadStateFromPrefs();
-        lstFilesFound.getColumns().forEach((TableColumn<MatchedFile, ?> t) -> {
-            ((TableColumn<MatchedFile, String>) t).setCellValueFactory(WayfarerPane::getCellValue);
-        });
+//        lstFilesFound.getColumns().forEach((TableColumn<MatchedFile, ?> t) -> {
+//            ((TableColumn<MatchedFile, String>) t).setCellValueFactory(WayfarerPane::getCellValue);
+//        });
+        colFilename.setCellValueFactory((cellData) -> new SimpleStringProperty(cellData.getValue().getFile().getFileName().toString()));
+        colFolder.setCellValueFactory((cellData) -> new SimpleStringProperty(cellData.getValue().getFile().getParent().toString()));
+        colLastModified.setCellValueFactory((cellData) -> new SimpleObjectProperty<>(cellData.getValue().getAttrs().lastModifiedTime()));
+//        colLastModified.setComparator((FileTime arg0, FileTime arg1) -> {
+//            return 0; //To change body of generated lambdas, choose Tools | Templates.
+//        });
         lstFilesFound.getSelectionModel().selectedItemProperty().addListener(this::selectHittedFile);
         FileListEmpty fileListEmptyProp = new FileListEmpty(lstFilesFound.getItems());
         mnuOpenMatchedFile.disableProperty().bind(fileListEmptyProp);
@@ -140,34 +147,56 @@ public class WayfarerPane implements Initializable {
         }
     }
 
-    private static ObservableValue<String> getCellValue(TableColumn.CellDataFeatures<MatchedFile, String> cellData) {
-        Path path = cellData.getValue().getFile();
-        switch (cellData.getTableColumn().getId()) {
-            case "filename":
-                return new SimpleStringProperty(path.getFileName().toString());
-            case "folder":
-                return new SimpleStringProperty(path.getParent().toString());
-            case "modified":
-                FileTime ft = cellData.getValue().getAttrs().lastModifiedTime();
-                Instant inst = ft.toInstant();
-                LocalDateTime ldt = LocalDateTime.ofInstant(inst, ZoneId.of("Europe/Helsinki"));
-                return new SimpleStringProperty(ldt.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)));
-        }
-        return null;
-    }
-
     private void selectHittedFile(ObservableValue<? extends MatchedFile> ov, MatchedFile oldValue, MatchedFile newValue) {
-        fldHits.getChildren().clear();
+        fldHits.getEngine().loadContent("");
         fldStatus.setText("");
         if (newValue != null) {
-            fldStatus.setText("Selected item " + newValue.getAttrs().size() + " bytes");
-            List<MatchedLine> lines = newValue.getLines();
-            lines.forEach(this::lineToText);
+            fldStatus.setText("Selected item " + newValue.getAttrs().size() + " bytes, " + newValue.getTotalNbrofHits() + " hits");
+            showHits(newValue.getLines());
         }
     }
 
-    private void lineToText(MatchedLine line) {
-        fldHits.getChildren().add(new Text(line.getLineNbr() + "\t" + line.getLine() + "\n"));
+    private void showHits(List<MatchedLine> lines) {
+        Optional<String> fullContent = lines.stream().map(this::lineToText).reduce((contentSoFar, line) -> {
+            return contentSoFar + line;
+        });
+        if (fullContent.isPresent()) {
+            StringBuilder buf = new StringBuilder();
+            buf.append("<style> em { font-style: normal; font-weight: 900; color: red; } </style>");
+            buf.append(fullContent.get());
+            fldHits.getEngine().loadContent(buf.toString());
+        }
+    }
+
+    private String lineToText(MatchedLine line) {
+        StringBuilder buf = new StringBuilder();
+        buf.append("<pre>");
+        buf.append(String.valueOf(line.getLineNbr()));
+        buf.append("\t");
+        Iterator<Integer[]> matches = line.getMatches().iterator();
+        Integer[] match = matches.hasNext() ? matches.next() : null;
+        String li = line.getLine();
+        for (int i = 0; i < li.length(); i++) {
+            if (match != null && i == match[0]) {
+                buf.append("<em>");
+            }
+            char ch = li.charAt(i);
+            if (ch == '&') {
+                buf.append("&amp;");
+            } else if (ch == '<') {
+                buf.append("&lt;");
+            } else if (ch == '>') {
+                buf.append("&gt;");
+            } else {
+                buf.append(ch);
+            }
+            if (match != null && i == match[1]) {
+                buf.append("</em>");
+                match = matches.hasNext() ? matches.next() : null;
+            }
+        }
+        buf.append("</pre>");
+        return buf.toString();
     }
 
     private void showSummary() {
@@ -259,7 +288,7 @@ public class WayfarerPane implements Initializable {
 
     private void resetOutputs() {
         lstFilesFound.getItems().clear();
-        fldHits.getChildren().clear();
+        fldHits.getEngine().loadContent("");
         fldSummary.clear();
         fldStatus.setText("");
         fldNbrOfFiles.setText("");
@@ -286,10 +315,12 @@ public class WayfarerPane implements Initializable {
         if (value != null) {
             ObservableList<T> items = combo.getItems();
             int ix = items.indexOf(value);
-            if (ix > 0) {
-                items.remove(value);
-            }
-            if (ix != 0) {
+            if (ix != 0) {  // no need to do anything, if value already in the beginning of the list
+                if (ix > 0) {   // value found further down the list => move up to first
+                    items.remove(value);
+                } else if (items.size() == maxItemsInCombos) {
+                    items.remove(items.size() - 1); // remove last
+                }
                 items.add(0, value);
                 combo.getSelectionModel().select(value);
             }
@@ -314,8 +345,9 @@ public class WayfarerPane implements Initializable {
 
     private void loadStateFromPrefs() {
         try {
-            pnlWayfarer.setPrefHeight(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stageheight", "700")));
-            pnlWayfarer.setPrefWidth(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stagewidth", "1200")));
+            maxItemsInCombos = Integer.parseInt(userPrefs.getPreference(PREF_NODE_SETTINGS, "maxItemsInCombos", "12"));
+            pnlWayfarer.setPrefHeight(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stageheight", "600.0")));
+            pnlWayfarer.setPrefWidth(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stagewidth", "1000.0")));
             initCombo(fldFileMask, PREF_NODE_RECENT_FILE_MASKS, DUMMY_STRING_CONVERTER);
             initCombo(fldSearchText, PREF_NODE_RECENT_SEARCH_TEXTS, DUMMY_STRING_CONVERTER);
             initCombo(fldRoot, PREF_NODE_RECENT_ROOTS, FILE_TO_STRING_CONVERTER);
@@ -326,6 +358,7 @@ public class WayfarerPane implements Initializable {
 
     private void saveStateToPrefs() {
         try {
+            userPrefs.putPreference(PREF_NODE_SETTINGS, "maxItemsInCombos", String.valueOf(maxItemsInCombos));
             userPrefs.putPreference(PREF_NODE_SETTINGS, "stageheight", String.valueOf(pnlWayfarer.getHeight()));
             userPrefs.putPreference(PREF_NODE_SETTINGS, "stagewidth", String.valueOf(pnlWayfarer.getWidth()));
             userPrefs.saveRecentItems(fldFileMask.getItems(), PREF_NODE_RECENT_FILE_MASKS, DUMMY_STRING_CONVERTER);
