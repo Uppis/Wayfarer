@@ -169,6 +169,7 @@ public class WayfarerPane implements Initializable {
             buf.append(fullContent.get());
             buf.append("</pre>");
             fldHits.getEngine().loadContent(buf.toString());
+            buf.append("</pre>");
         }
     }
 
@@ -424,12 +425,17 @@ public class WayfarerPane implements Initializable {
         cmdStart.setDisable(searching);
         cmdStop.setDisable(!searching);
         cmdBrowseRoot.setDisable(searching);
+        fldFileMask.setDisable(searching);
+        fldSearchText.setDisable(searching);
+        fldRoot.setDisable(searching);
         optSearchTextCaseSensitive.setDisable(searching);
         if (!searching) {
             showSummary();
             if (!lstFilesFound.getItems().isEmpty()) {
-                lstFilesFound.getSelectionModel().selectFirst();
                 lstFilesFound.requestFocus();
+                if (lstFilesFound.getSelectionModel().getSelectedItem() == null) {
+                    lstFilesFound.getSelectionModel().selectFirst();
+                }
             }
         }
     }
