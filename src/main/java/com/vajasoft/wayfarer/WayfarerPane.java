@@ -87,6 +87,8 @@ public class WayfarerPane implements Initializable {
     @FXML
     private Button cmdStop;
     @FXML
+    private Button cmdBrowseRoot;
+    @FXML
     private CheckBox optSearchTextCaseSensitive;
     @FXML
     private TableView<MatchedFile> lstFilesFound;
@@ -163,14 +165,15 @@ public class WayfarerPane implements Initializable {
         if (fullContent.isPresent()) {
             StringBuilder buf = new StringBuilder();
             buf.append("<style> em { font-style: normal; font-weight: 900; color: red; } </style>");
+            buf.append("<pre>");
             buf.append(fullContent.get());
+            buf.append("</pre>");
             fldHits.getEngine().loadContent(buf.toString());
         }
     }
 
     private String lineToText(MatchedLine line) {
         StringBuilder buf = new StringBuilder();
-        buf.append("<pre>");
         buf.append(String.valueOf(line.getLineNbr()));
         buf.append("\t");
         Iterator<Integer[]> matches = line.getMatches().iterator();
@@ -195,7 +198,7 @@ public class WayfarerPane implements Initializable {
                 match = matches.hasNext() ? matches.next() : null;
             }
         }
-        buf.append("</pre>");
+        buf.append("\n");
         return buf.toString();
     }
 
@@ -420,6 +423,8 @@ public class WayfarerPane implements Initializable {
         mainWindow.getScene().setCursor(searching ? Cursor.WAIT : Cursor.DEFAULT);
         cmdStart.setDisable(searching);
         cmdStop.setDisable(!searching);
+        cmdBrowseRoot.setDisable(searching);
+        optSearchTextCaseSensitive.setDisable(searching);
         if (!searching) {
             showSummary();
             if (!lstFilesFound.getItems().isEmpty()) {
