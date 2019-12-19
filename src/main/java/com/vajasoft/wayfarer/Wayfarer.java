@@ -44,7 +44,7 @@ public class Wayfarer extends Application {
     }
 
     private void setIcons(Stage stage) {
-        String[] iconFileNames = {"img/duke_26x48.png", "img/duke_44x80.png", "img/duke_48x48.png", "img/duke_80x80.png"};
+        String[] iconFileNames = {"img/duke_32x32.png", "img/duke_48x48.png"};
         for (String fn : iconFileNames) {
             InputStream is = getClass().getResourceAsStream(fn);
             if (is != null) {
