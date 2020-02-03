@@ -25,23 +25,36 @@ import java.util.regex.Pattern;
 
 public class FileTreeWalker extends SimpleFileVisitor<Path> {
 
+    private static final String PATH_MATCH_PREFIX_GLOB = "glob:**/";
+    private static final String PATH_MATCH_PREFIX_REGEX = "regex:";
+
     private static final Charset CHARSET = Charset.forName(System.getProperty("file.encoding"));
     private static final CharsetDecoder DECODER = CHARSET.newDecoder().onUnmappableCharacter(CodingErrorAction.IGNORE).onMalformedInput(CodingErrorAction.IGNORE);
 
     private final List<PathMatcher> fileMatchers;
-    private final Pattern txtToSearch;
+    private final boolean ignoreCase;
+    private final String txtToSearchPlain;
+    private final Pattern txtToSearchRegex;
     private final SearchResult searchResults;
     private volatile FileVisitResult result = FileVisitResult.CONTINUE;
 
-    public FileTreeWalker(SearchCriteria crit, SearchResult searchResults) {
-        this.fileMatchers = getMatchers(crit.getFilemask());
+    public FileTreeWalker(SearchCriteria crit, SearchResult searchRes) {
+        fileMatchers = getMatchers(crit);
+        ignoreCase = !crit.isSearchTextCaseSensitive();
         String searchText = crit.getTxtToSearch();
         if (searchText == null || searchText.isEmpty()) {
-            this.txtToSearch = null;
+            txtToSearchPlain = null;
+            txtToSearchRegex = null;
         } else {
-            this.txtToSearch = crit.isIsSearchTextCaseSensitive() ? Pattern.compile(searchText) : Pattern.compile(searchText, Pattern.CASE_INSENSITIVE);
+            if (crit.isSearchTextRegex()) {
+                txtToSearchPlain = null;
+                txtToSearchRegex =  ignoreCase ? Pattern.compile(searchText, Pattern.CASE_INSENSITIVE) : Pattern.compile(searchText);
+            } else {
+                txtToSearchPlain = searchText;
+                txtToSearchRegex = null;
+            }
         }
-        this.searchResults = searchResults;
+        searchResults = searchRes;
     }
 
     public void cancelSearch() {
@@ -66,17 +79,14 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
                 LineNumberReader reader = new LineNumberReader(Channels.newReader(channel, DECODER, -1));
                 String line = reader.readLine();
                 while (line != null && result != FileVisitResult.TERMINATE) {
-                    if (txtToSearch == null) {
+                    if (txtToSearchPlain == null && txtToSearchRegex == null) { // Everything is a match
                         MatchedFile match = searchResults.matchFoundInFile(file, attrs);
                         match.matchingLineFound(line, reader.getLineNumber());
                     } else {
-                        Matcher matcher = txtToSearch.matcher(line);
-                        if (matcher.find()) {
-                            MatchedFile match = searchResults.matchFoundInFile(file, attrs);
-                            MatchedLine matchingLine = match.matchingLineFound(line, reader.getLineNumber());
-                            do {
-                                matchingLine.addMatch(matcher.start(), matcher.end() - 1);  // end == offset AFTER the last character matched
-                            } while (matcher.find());
+                        if (txtToSearchPlain != null) { 
+                            doPlainTextSearch(line, file, attrs, reader.getLineNumber());
+                        } else {
+                            doRegexSearch(line, file, attrs, reader.getLineNumber());
                         }
                     }
                     line = reader.readLine();
@@ -100,10 +110,10 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
         return result;
     }
 
-    private List<PathMatcher> getMatchers(String filemask) {
+    private List<PathMatcher> getMatchers(SearchCriteria crit) {
         List<PathMatcher> ret = new ArrayList<>();
-        for (String mask : filemask.split("\\s*;\\s*")) {
-            ret.add(FileSystems.getDefault().getPathMatcher("glob:**/" + mask));
+        for (String mask : crit.getFilemask().split("\\s*;\\s*")) {
+            ret.add(FileSystems.getDefault().getPathMatcher((crit.isFileMaskRegex() ? PATH_MATCH_PREFIX_REGEX : PATH_MATCH_PREFIX_GLOB) + mask));
         }
         return ret;
     }
@@ -115,5 +125,33 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
             }
         }
         return false;
+    }
+
+    private void doRegexSearch(String line, Path file, BasicFileAttributes attrs, int lineNumber) {
+        Matcher matcher = txtToSearchRegex.matcher(line);
+        if (matcher.find()) {
+            MatchedFile match = searchResults.matchFoundInFile(file, attrs);
+            MatchedLine matchingLine = match.matchingLineFound(line, lineNumber);
+            do {
+                matchingLine.addMatch(matcher.start(), matcher.end() - 1);  // end == offset AFTER the last character matched
+            } while (matcher.find());
+        }
+    }
+
+    private void doPlainTextSearch(String line, Path file, BasicFileAttributes attrs, int lineNumber) {
+        MatchedLine matchingLine = null;
+        int pos = 0;
+        int len = txtToSearchPlain.length();
+        do {
+            if (line.regionMatches(ignoreCase, pos, txtToSearchPlain, 0, len)) {
+                if (matchingLine == null) { // First match in this line of text
+                    MatchedFile match = searchResults.matchFoundInFile(file, attrs);
+                    matchingLine = match.matchingLineFound(line, lineNumber);
+                }
+                matchingLine.addMatch(pos, (pos += len) - 1);
+            } else {
+                pos++;
+            }
+        } while (pos + len <= line.length());
     }
 }

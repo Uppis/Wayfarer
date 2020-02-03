@@ -53,6 +53,7 @@
                 <ColumnConstraints hgrow="NEVER" />
                 <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
                 <ColumnConstraints hgrow="NEVER" />
+            <ColumnConstraints hgrow="NEVER" />
                 <ColumnConstraints hgrow="NEVER" />
             </columnConstraints>
             <rowConstraints>
@@ -69,7 +70,7 @@
                 <Label text="Root folder:" GridPane.rowIndex="2" />
                 <ComboBox fx:id="fldRoot" editable="true" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" />
                 <Button fx:id="cmdBrowseRoot" mnemonicParsing="false" onAction="#onCmdBrowseRoot" text="Browse" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                <Button fx:id="cmdStart" defaultButton="true" mnemonicParsing="false" onAction="#onCmdStart" prefWidth="60.0" text="Search" GridPane.columnIndex="3">
+                <Button fx:id="cmdStart" defaultButton="true" mnemonicParsing="false" onAction="#onCmdStart" prefWidth="60.0" text="Search" GridPane.columnIndex="4">
                     <font>
                         <Font name="System Bold" size="12.0" />
                     </font>
@@ -86,7 +87,8 @@
                         </ImageView>
                     </graphic>
                 </CheckBox>
-                <Button fx:id="cmdStop" cancelButton="true" mnemonicParsing="false" onAction="#onCmdStop" prefWidth="60.0" text="Stop" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                <Button fx:id="cmdStop" cancelButton="true" mnemonicParsing="false" onAction="#onCmdStop" prefWidth="60.0" text="Stop" GridPane.columnIndex="4" GridPane.rowIndex="1" />
+            <CheckBox fx:id="optSearchTextRegex" mnemonicParsing="false" text="RegEx" GridPane.columnIndex="3" GridPane.rowIndex="1" />
             </children>
             <VBox.margin>
                 <Insets left="12.0" right="12.0" top="12.0" />
@@ -106,8 +108,9 @@
                     <contextMenu>
                         <ContextMenu>
                             <items>
-                                <MenuItem fx:id="mnuOpenMatchedFile" mnemonicParsing="false" onAction="#onOpenMatchedFile" text="Open" />
+                                <MenuItem fx:id="mnuCopySelected" mnemonicParsing="false" onAction="#onMnuCopySelected" text="Copy" />
                                 <MenuItem fx:id="mnuCopyMatchedFilePath" mnemonicParsing="false" onAction="#onMnuCopyMatchedFilePath" text="Copy path" />
+                                <MenuItem fx:id="mnuOpenMatchedFile" mnemonicParsing="false" onAction="#onOpenMatchedFile" text="Open" />
                                 <MenuItem fx:id="mnuOpenMatchedFileFolder" mnemonicParsing="false" onAction="#onMnuOpenMatchedFileFolder" text="Open folder" />
                             </items>
                         </ContextMenu>

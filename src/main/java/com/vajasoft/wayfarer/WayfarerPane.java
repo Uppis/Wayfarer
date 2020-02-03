@@ -35,7 +35,9 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
@@ -73,6 +75,7 @@ public class WayfarerPane implements Initializable {
     private DirectoryChooser dirChooser;
     private SearchTask searcher;
     private SearchResult searchResults;
+    private SingleFileActionDisabled fileActionDisabled;
 
     @FXML
     private Pane pnlWayfarer;
@@ -91,11 +94,15 @@ public class WayfarerPane implements Initializable {
     @FXML
     private CheckBox optSearchTextCaseSensitive;
     @FXML
+    private CheckBox optSearchTextRegex;
+    @FXML
     private TableView<MatchedFile> lstFilesFound;
     @FXML
-    private MenuItem mnuOpenMatchedFile;
+    private MenuItem mnuCopySelected;
     @FXML
     private MenuItem mnuCopyMatchedFilePath;
+    @FXML
+    private MenuItem mnuOpenMatchedFile;
     @FXML
     private MenuItem mnuOpenMatchedFileFolder;
     @FXML
@@ -132,10 +139,12 @@ public class WayfarerPane implements Initializable {
 //            return 0; //To change body of generated lambdas, choose Tools | Templates.
 //        });
         lstFilesFound.getSelectionModel().selectedItemProperty().addListener(this::selectHittedFile);
-        FileListEmpty fileListEmptyProp = new FileListEmpty(lstFilesFound.getItems());
-        mnuOpenMatchedFile.disableProperty().bind(fileListEmptyProp);
-        mnuCopyMatchedFilePath.disableProperty().bind(fileListEmptyProp);
-        mnuOpenMatchedFileFolder.disableProperty().bind(fileListEmptyProp);
+        lstFilesFound.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        fileActionDisabled = new SingleFileActionDisabled(lstFilesFound);
+        mnuCopySelected.disableProperty().bind(new FileActionDisabled(lstFilesFound));
+        mnuCopyMatchedFilePath.disableProperty().bind(fileActionDisabled);
+        mnuOpenMatchedFile.disableProperty().bind(fileActionDisabled);
+        mnuOpenMatchedFileFolder.disableProperty().bind(fileActionDisabled);
     }
 
     void setAppContext(AppContext ctx) {
@@ -227,10 +236,32 @@ public class WayfarerPane implements Initializable {
 
     @FXML
     private void onOpenMatchedFile(Event event) {
-        if (event instanceof ActionEvent || event instanceof MouseEvent && ((MouseEvent) event).getClickCount() == 2) {
-            handleFileAction((f) -> {
-                Desktop.getDesktop().open(f);
-            });
+        if (!fileActionDisabled.get()) {
+            if (event instanceof ActionEvent || event instanceof MouseEvent && ((MouseEvent) event).getClickCount() == 2) {
+                handleFileAction((f) -> {
+                    Desktop.getDesktop().open(f);
+                });
+            }
+        }
+    }
+
+    @FXML
+    private void onMnuCopySelected(ActionEvent event) {
+//        ObservableList<MatchedFile> selectedItems = lstFilesFound.getSelectionModel().getSelectedItems();
+        ObservableList<TablePosition> selectedCells = lstFilesFound.getSelectionModel().getSelectedCells();
+        StringBuilder buf = new StringBuilder();
+        int currRow = -1;
+        for (TablePosition tp : selectedCells) {
+            if (currRow >= 0 && tp.getRow() != currRow) {
+                buf.append('\n');
+                currRow = tp.getRow();
+            }
+            buf.append(tp.getTableColumn().getText());
+        }
+        if (buf.length() > 0) {
+        ClipboardContent content = new ClipboardContent();
+        content.putString(buf.toString());
+        clipboard.setContent(content);
         }
     }
 
@@ -275,8 +306,11 @@ public class WayfarerPane implements Initializable {
         SearchCriteria crit = new SearchCriteria(
                 getRootFolder().toPath(),
                 getFileMask(),
+                false,
                 fldSearchText.getValue(),
-                optSearchTextCaseSensitive.isSelected());
+                optSearchTextCaseSensitive.isSelected(),
+                optSearchTextRegex.isSelected()
+        );
         searcher = new SearchTask(
                 crit,
                 searchResults);
@@ -429,13 +463,18 @@ public class WayfarerPane implements Initializable {
         fldSearchText.setDisable(searching);
         fldRoot.setDisable(searching);
         optSearchTextCaseSensitive.setDisable(searching);
+        optSearchTextRegex.setDisable(searching);
         if (!searching) {
+            fldStatus.setText("");
             showSummary();
             if (!lstFilesFound.getItems().isEmpty()) {
                 lstFilesFound.requestFocus();
-                if (lstFilesFound.getSelectionModel().getSelectedItem() == null) {
+//                if (lstFilesFound.getSelectionModel().getSelectedItem() == null) {
+                if (lstFilesFound.getSelectionModel().getSelectedItems().isEmpty()) {
                     lstFilesFound.getSelectionModel().selectFirst();
                 }
+            } else {
+                fldFileMask.requestFocus();
             }
         }
     }

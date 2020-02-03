@@ -5,7 +5,10 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.TreeSet;
 import javafx.geometry.Insets;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
@@ -31,12 +34,15 @@ import javafx.stage.Window;
 public class AboutBox extends Dialog<Void> {
     private final ResourceBundle bundle = ResourceBundle.getBundle("com/vajasoft/wayfarer/res/AboutBox");
     private final Node parent;
+    private final Package applPackage;
     private Window owner;
 
     public AboutBox(Node parent, Class application) {
         super();
         this.parent = parent;
+        this.applPackage = application.getPackage();
         setOnShowing(this::onShowing);
+        setResizable(true);
     }
 
     private void onShowing(DialogEvent e) {
@@ -55,7 +61,9 @@ public class AboutBox extends Dialog<Void> {
     private Node createContent() {
         Tab tab1 = createTab1();
         Tab tab2 = createTab2();
-        TabPane ret = new TabPane(tab1, tab2);
+        Tab tab4 = createTab4();
+        Tab tab5 = createTab5();
+        TabPane ret = new TabPane(tab1, tab2, tab4, tab5);
         return ret;
     }
 
@@ -67,7 +75,8 @@ public class AboutBox extends Dialog<Void> {
         grid.setHgap(24);
         grid.setVgap(8);
         int row = 0;
-        addRow(grid, row++, "label.application.version", new Label(getClass().getPackage().getImplementationVersion()));
+        String implVersion = applPackage.getImplementationVersion();
+        addRow(grid, row++, "label.application.version", new Label(implVersion != null ? implVersion : "?"));
         addRow(grid, row++, "label.application.folder", new Label(new File(".").getAbsolutePath()));
         addRow(grid, row++, "label.process.pid", new Label(String.valueOf(current.pid())));
         addRow(grid, row++, "label.process.starttime", new Label(String.valueOf(info.startInstant().get())));
@@ -94,6 +103,30 @@ public class AboutBox extends Dialog<Void> {
         addScale(primary, buf);
         TextArea text = new TextArea(buf.toString());
         Tab ret = new Tab(bundle.getString("label.tab2"), text);
+        ret.setClosable(false);
+        return ret;
+    }
+
+    private Tab createTab4() {
+        StringBuilder buf = new StringBuilder();
+        Properties sysProps = System.getProperties();
+        for (String prop : new TreeSet<>(sysProps.stringPropertyNames())) {
+            buf.append(prop).append(" = ").append(sysProps.getProperty(prop)).append('\n');
+        }
+        TextArea text = new TextArea(buf.toString());
+        Tab ret = new Tab(bundle.getString("label.tab4"), text);
+        ret.setClosable(false);
+        return ret;
+    }
+
+    private Tab createTab5() {
+        StringBuilder buf = new StringBuilder();
+        Map<String, String> env = System.getenv();
+        for (String envVar : new TreeSet<>(env.keySet())) {
+            buf.append(envVar).append(" = ").append(env.get(envVar)).append('\n');
+        }
+        TextArea text = new TextArea(buf.toString());
+        Tab ret = new Tab(bundle.getString("label.tab5"), text);
         ret.setClosable(false);
         return ret;
     }

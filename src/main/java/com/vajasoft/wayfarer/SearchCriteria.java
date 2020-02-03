@@ -10,13 +10,17 @@ public class SearchCriteria {
     private final Path rootFolder;
     private final String filemask;
     private final String txtToSearch;
-    private final boolean isSearchTextCaseSensitive;
+    private final boolean searchTextCaseSensitive;
+    private final boolean searchTextRegex;
+    private final boolean fileMaskRegex;
 
-    public SearchCriteria(Path rootFolder, String filemask, String txtToSearch, boolean isSearchTextCaseSensitive) {
+    public SearchCriteria(Path rootFolder, String filemask, boolean fileMaskRegex, String txtToSearch, boolean searchTextCaseSensitive, boolean searchTextRegex) {
         this.rootFolder = rootFolder;
         this.filemask = filemask;
         this.txtToSearch = txtToSearch;
-        this.isSearchTextCaseSensitive = isSearchTextCaseSensitive;
+        this.searchTextCaseSensitive = searchTextCaseSensitive;
+        this.searchTextRegex = searchTextRegex;
+        this.fileMaskRegex = fileMaskRegex;
     }
 
     public Path getRootFolder() {
@@ -31,8 +35,15 @@ public class SearchCriteria {
         return txtToSearch;
     }
 
-    public boolean isIsSearchTextCaseSensitive() {
-        return isSearchTextCaseSensitive;
+    public boolean isSearchTextCaseSensitive() {
+        return searchTextCaseSensitive;
     }
 
+    public boolean isSearchTextRegex() {
+        return searchTextRegex;
+    }
+
+    public boolean isFileMaskRegex() {
+        return fileMaskRegex;
+    }
 }
