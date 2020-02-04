@@ -1,17 +1,22 @@
 package com.vajasoft.wayfarer;
 
-import java.net.URL;
-import javafx.fxml.FXMLLoader;
-import javafx.fxml.Initializable;
 import javafx.scene.Node;
-import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.stage.Stage;
 import javafx.stage.Window;
 
 
 public class Util {
-
+    public static String getVersion (Class cls) {
+        String ret = "?";
+        Package pkg = cls.getPackage();
+        if (pkg != null) {
+            String implVersion = pkg.getImplementationVersion();
+            if (implVersion != null) {
+                ret = implVersion;
+            }
+        }
+        return ret;
+    }
 
     public static Window findWindow(Node ofNode) {
         Scene scene = ofNode != null ? ofNode.getScene() : null;

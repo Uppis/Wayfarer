@@ -17,7 +17,6 @@ import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -37,7 +36,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
-import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
@@ -75,7 +73,6 @@ public class WayfarerPane implements Initializable {
     private DirectoryChooser dirChooser;
     private SearchTask searcher;
     private SearchResult searchResults;
-    private SingleFileActionDisabled fileActionDisabled;
 
     @FXML
     private Pane pnlWayfarer;
@@ -118,7 +115,7 @@ public class WayfarerPane implements Initializable {
     @FXML
     private TableColumn<MatchedFile, String> colFolder;
     @FXML
-    private TableColumn<MatchedFile, FileTime> colLastModified;
+    private TableColumn<MatchedFile, String> colLastModified;
     private int maxItemsInCombos;
 
     @Override
@@ -132,16 +129,16 @@ public class WayfarerPane implements Initializable {
 //        lstFilesFound.getColumns().forEach((TableColumn<MatchedFile, ?> t) -> {
 //            ((TableColumn<MatchedFile, String>) t).setCellValueFactory(WayfarerPane::getCellValue);
 //        });
-        colFilename.setCellValueFactory((cellData) -> new SimpleStringProperty(cellData.getValue().getFile().getFileName().toString()));
-        colFolder.setCellValueFactory((cellData) -> new SimpleStringProperty(cellData.getValue().getFile().getParent().toString()));
-        colLastModified.setCellValueFactory((cellData) -> new SimpleObjectProperty<>(cellData.getValue().getAttrs().lastModifiedTime()));
+        colFilename.setCellValueFactory(this::matchedFileCellValueFactory);
+        colFolder.setCellValueFactory(this::matchedFileCellValueFactory);
+        colLastModified.setCellValueFactory(this::matchedFileCellValueFactory);
 //        colLastModified.setComparator((FileTime arg0, FileTime arg1) -> {
 //            return 0; //To change body of generated lambdas, choose Tools | Templates.
 //        });
         lstFilesFound.getSelectionModel().selectedItemProperty().addListener(this::selectHittedFile);
         lstFilesFound.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        fileActionDisabled = new SingleFileActionDisabled(lstFilesFound);
         mnuCopySelected.disableProperty().bind(new FileActionDisabled(lstFilesFound));
+        SingleFileActionDisabled fileActionDisabled = new SingleFileActionDisabled(lstFilesFound);
         mnuCopyMatchedFilePath.disableProperty().bind(fileActionDisabled);
         mnuOpenMatchedFile.disableProperty().bind(fileActionDisabled);
         mnuOpenMatchedFileFolder.disableProperty().bind(fileActionDisabled);
@@ -156,6 +153,24 @@ public class WayfarerPane implements Initializable {
                 fldRoot.setValue(arg);
             }
         }
+    }
+
+    private ObservableValue<String> matchedFileCellValueFactory(TableColumn.CellDataFeatures<MatchedFile, String> cellData) {
+        MatchedFile row = cellData.getValue();
+        TableColumn col = cellData.getTableColumn();
+        return new SimpleStringProperty(matchedFileToColumns(row, col));
+    }
+
+    private String matchedFileToColumns(MatchedFile row, TableColumn col) {
+        String ret = "";
+        if (col == colFilename) {
+            ret = row.getFile().getFileName().toString();
+        } else if (col == colFolder) {
+            ret = row.getFile().getParent().toString();
+        } else if (col == colLastModified) {
+            ret = String.valueOf(row.getAttrs().lastModifiedTime());
+        }
+        return ret;
     }
 
     private void selectHittedFile(ObservableValue<? extends MatchedFile> ov, MatchedFile oldValue, MatchedFile newValue) {
@@ -236,7 +251,7 @@ public class WayfarerPane implements Initializable {
 
     @FXML
     private void onOpenMatchedFile(Event event) {
-        if (!fileActionDisabled.get()) {
+        if (!mnuOpenMatchedFile.isDisable()) {
             if (event instanceof ActionEvent || event instanceof MouseEvent && ((MouseEvent) event).getClickCount() == 2) {
                 handleFileAction((f) -> {
                     Desktop.getDesktop().open(f);
@@ -247,21 +262,25 @@ public class WayfarerPane implements Initializable {
 
     @FXML
     private void onMnuCopySelected(ActionEvent event) {
-//        ObservableList<MatchedFile> selectedItems = lstFilesFound.getSelectionModel().getSelectedItems();
-        ObservableList<TablePosition> selectedCells = lstFilesFound.getSelectionModel().getSelectedCells();
+        ObservableList<MatchedFile> selectedItems = lstFilesFound.getSelectionModel().getSelectedItems();
+        List<TableColumn<MatchedFile, ?>> columns = lstFilesFound.getColumns();
         StringBuilder buf = new StringBuilder();
-        int currRow = -1;
-        for (TablePosition tp : selectedCells) {
-            if (currRow >= 0 && tp.getRow() != currRow) {
-                buf.append('\n');
-                currRow = tp.getRow();
+        boolean newLine = true;
+        for (MatchedFile f : selectedItems) {
+            for (TableColumn col : columns) {
+                if (!newLine) {
+                    buf.append('\t');
+                }
+                buf.append(matchedFileToColumns(f, col));
+                newLine = false;
             }
-            buf.append(tp.getTableColumn().getText());
+            buf.append('\n');
+            newLine = true;
         }
         if (buf.length() > 0) {
-        ClipboardContent content = new ClipboardContent();
-        content.putString(buf.toString());
-        clipboard.setContent(content);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(buf.toString());
+            clipboard.setContent(content);
         }
     }
 

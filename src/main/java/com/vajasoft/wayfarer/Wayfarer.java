@@ -28,6 +28,7 @@ public class Wayfarer extends Application {
     public void start(Stage stage) throws Exception {
         ctx = new AppContext(stage, getParameters());
         WayfarerPane controller = (WayfarerPane) setSceneContent(Wayfarer.class.getResource("WayfarerPane.fxml"), stage);
+        stage.setTitle(getClass().getSimpleName() + " " + Util.getVersion(getClass()));
         setIcons(stage);
         controller.setAppContext(ctx);
         stage.addEventHandler(WindowEvent.ANY, controller::handleWindowEvent);
