@@ -32,6 +32,7 @@ import javafx.stage.Window;
  * @author Z705692
  */
 public class AboutBox extends Dialog<Void> {
+
     private final ResourceBundle bundle = ResourceBundle.getBundle("com/vajasoft/wayfarer/res/AboutBox");
     private final Node parent;
     private final Package applPackage;
@@ -79,7 +80,7 @@ public class AboutBox extends Dialog<Void> {
         addRow(grid, row++, "label.application.version", new Label(implVersion != null ? implVersion : "?"));
         addRow(grid, row++, "label.application.folder", new Label(new File(".").getAbsolutePath()));
         addRow(grid, row++, "label.process.pid", new Label(String.valueOf(current.pid())));
-        addRow(grid, row++, "label.process.starttime", new Label(String.valueOf(info.startInstant().get())));
+        addRow(grid, row++, "label.process.starttime", new Label(getStartTimeFormatted(info)));
         addRow(grid, row++, "label.java.vm", new Label(System.getProperty("java.vm.name")));
         addRow(grid, row++, "label.java.version", new Label(System.getProperty("java.version")));
         addRow(grid, row++, "label.javafx.version", new Label(System.getProperty("javafx.version")));
@@ -91,6 +92,10 @@ public class AboutBox extends Dialog<Void> {
         Tab ret = new Tab(bundle.getString("label.tab1"), grid);
         ret.setClosable(false);
         return ret;
+    }
+
+    private String getStartTimeFormatted(ProcessHandle.Info info) {
+        return info.startInstant().isPresent() ? Util.getDateTimeFormatted(info.startInstant().get()) : "";
     }
 
     private Tab createTab2() {
@@ -142,10 +147,10 @@ public class AboutBox extends Dialog<Void> {
     private void addScale(Screen screen, StringBuilder to) {
         try {
             Method method = Screen.class.getDeclaredMethod("getOutputScaleX");
-            double scale = (Double)method.invoke(screen);
+            double scale = (Double) method.invoke(screen);
             to.append('\n').append("Scale X:\t").append(scale);
             method = Screen.class.getDeclaredMethod("getOutputScaleY");
-            scale = (Double)method.invoke(screen);
+            scale = (Double) method.invoke(screen);
             to.append('\n').append("Scale Y:\t").append(scale);
         } catch (IllegalAccessException | IllegalArgumentException | NoSuchMethodException | SecurityException | InvocationTargetException ex) {
         }

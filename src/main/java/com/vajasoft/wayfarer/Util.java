@@ -1,12 +1,18 @@
 package com.vajasoft.wayfarer;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.stage.Window;
 
-
 public class Util {
-    public static String getVersion (Class cls) {
+
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    public static String getVersion(Class cls) {
         String ret = "?";
         Package pkg = cls.getPackage();
         if (pkg != null) {
@@ -25,9 +31,13 @@ public class Util {
 
     public static void closeWindow(Node ofNode) {
         Window window = findWindow(ofNode);
-        if(window != null) {
+        if (window != null) {
             window.hide();
         }
+    }
+
+    public static String getDateTimeFormatted(Instant dateTime) {
+        return LocalDateTime.ofInstant(dateTime, ZoneId.systemDefault()).format(Util.DATE_TIME_FORMATTER);
     }
 
     private Util() {

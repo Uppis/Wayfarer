@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
 import java.text.NumberFormat;
 import java.util.Iterator;
 import java.util.List;
@@ -17,6 +16,7 @@ import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -24,6 +24,7 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
+import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -40,6 +41,10 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.web.WebView;
@@ -47,6 +52,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 import javafx.util.StringConverter;
+import javafx.util.converter.LocalDateTimeStringConverter;
 
 /**
  *
@@ -59,8 +65,11 @@ public class WayfarerPane implements Initializable {
     private static final String PREF_NODE_RECENT_FILE_MASKS = "recentmasks";
     private static final String PREF_NODE_RECENT_SEARCH_TEXTS = "recentsearches";
 
+    public static final KeyCodeCombination COPYKEY_CODE_COMBINATION = new KeyCodeCombination(KeyCode.C, KeyCombination.CONTROL_ANY);
+
     private static final StringConverter<File> FILE_TO_STRING_CONVERTER = new FileToStringConverter();
     private static final StringConverter<String> DUMMY_STRING_CONVERTER = new DummyStringConverter();
+    private static final LocalDateTimeStringConverter LOCALDATETIME_CONVERTER = new LocalDateTimeStringConverter();
     private static final File CURRENT_FOLDER = new File(".").getAbsoluteFile();
 
     private Window mainWindow;
@@ -69,6 +78,7 @@ public class WayfarerPane implements Initializable {
     private final NumberFormat sizeFormatter = NumberFormat.getNumberInstance();
     private final UserPreferences userPrefs = new UserPreferences(WayfarerPane.class);
     private final Clipboard clipboard = Clipboard.getSystemClipboard();
+    private final EventHandler<KeyEvent> keyEventHandler = this::handleKeyEvents;
     private AppContext ctx;
     private DirectoryChooser dirChooser;
     private SearchTask searcher;
@@ -135,8 +145,11 @@ public class WayfarerPane implements Initializable {
 //        colLastModified.setComparator((FileTime arg0, FileTime arg1) -> {
 //            return 0; //To change body of generated lambdas, choose Tools | Templates.
 //        });
-        lstFilesFound.getSelectionModel().selectedItemProperty().addListener(this::selectHittedFile);
+        cmdStart.defaultButtonProperty().bind(new DefaultButtonBinding(lstFilesFound));
         lstFilesFound.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        lstFilesFound.getSelectionModel().selectedItemProperty().addListener(this::selectHittedFile);
+        lstFilesFound.setOnKeyPressed(keyEventHandler);
+
         mnuCopySelected.disableProperty().bind(new FileActionDisabled(lstFilesFound));
         SingleFileActionDisabled fileActionDisabled = new SingleFileActionDisabled(lstFilesFound);
         mnuCopyMatchedFilePath.disableProperty().bind(fileActionDisabled);
@@ -155,6 +168,15 @@ public class WayfarerPane implements Initializable {
         }
     }
 
+    private void handleKeyEvents(KeyEvent e) {
+        if (e.getCode() == KeyCode.ENTER) {
+            onOpenMatchedFile(new ActionEvent());
+        } else if (COPYKEY_CODE_COMBINATION.match(e)) {
+            onMnuCopySelected(null);
+            e.consume();
+        }
+    }
+
     private ObservableValue<String> matchedFileCellValueFactory(TableColumn.CellDataFeatures<MatchedFile, String> cellData) {
         MatchedFile row = cellData.getValue();
         TableColumn col = cellData.getTableColumn();
@@ -168,7 +190,7 @@ public class WayfarerPane implements Initializable {
         } else if (col == colFolder) {
             ret = row.getFile().getParent().toString();
         } else if (col == colLastModified) {
-            ret = String.valueOf(row.getAttrs().lastModifiedTime());
+            ret = Util.getDateTimeFormatted(row.getAttrs().lastModifiedTime().toInstant());
         }
         return ret;
     }
@@ -506,6 +528,22 @@ public class WayfarerPane implements Initializable {
             } catch (IOException ex) {
                 Logger.LOG.warning(supply("File operation failed: ", ex));
             }
+        }
+    }
+
+    private class DefaultButtonBinding extends BooleanBinding {
+
+        private final TableView table;
+
+        DefaultButtonBinding(TableView table) {
+            this.table = table;
+            bind(table.focusedProperty());
+            bind(table.getItems());
+        }
+
+        @Override
+        protected boolean computeValue() {
+            return !table.isFocused() || table.getItems().isEmpty();
         }
     }
 }
