@@ -17,6 +17,7 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.input.KeyCodeCombination?>
@@ -48,12 +49,34 @@
                 </Menu>
             </menus>
         </MenuBar>
+      <ToolBar fx:id="toolbar" maxHeight="30.0" VBox.vgrow="NEVER">
+         <items>
+            <Button fx:id="cmdBack" contentDisplay="GRAPHIC_ONLY" graphicTextGap="0.0" maxHeight="20.0" minHeight="20.0" mnemonicParsing="false" onAction="#onCmdBack" prefHeight="20.0">
+               <graphic>
+                  <ImageView fitHeight="13.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
+                        <Image url="@img/ArrowLefttp.png" />
+                     </image>
+                  </ImageView>
+               </graphic>
+            </Button>
+            <Button fx:id="cmdForward" graphicTextGap="0.0" maxHeight="20.0" minHeight="20.0" mnemonicParsing="false" onAction="#onCmdForward" prefHeight="20.0">
+               <graphic>
+                  <ImageView fitHeight="13.0" pickOnBounds="true" preserveRatio="true">
+                     <image>
+                        <Image url="@img/ArrowRighttp.png" />
+                     </image>
+                  </ImageView>
+               </graphic>
+            </Button>
+         </items>
+      </ToolBar>
         <GridPane hgap="8.0" maxHeight="-Infinity" minHeight="-Infinity" prefHeight="120.0" vgap="6.0" VBox.vgrow="NEVER">
             <columnConstraints>
                 <ColumnConstraints hgrow="NEVER" />
                 <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
                 <ColumnConstraints hgrow="NEVER" />
-            <ColumnConstraints hgrow="NEVER" />
+                <ColumnConstraints hgrow="NEVER" />
                 <ColumnConstraints hgrow="NEVER" />
             </columnConstraints>
             <rowConstraints>
@@ -70,11 +93,6 @@
                 <Label text="Root folder:" GridPane.rowIndex="2" />
                 <ComboBox fx:id="fldRoot" editable="true" maxWidth="1.7976931348623157E308" GridPane.columnIndex="1" GridPane.hgrow="ALWAYS" GridPane.rowIndex="2" />
                 <Button fx:id="cmdBrowseRoot" mnemonicParsing="false" onAction="#onCmdBrowseRoot" text="Browse" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                <Button fx:id="cmdStart" defaultButton="true" mnemonicParsing="false" onAction="#onCmdStart" prefWidth="60.0" text="Search" GridPane.columnIndex="4">
-                    <font>
-                        <Font name="System Bold" size="12.0" />
-                    </font>
-                </Button>
                 <CheckBox fx:id="optSearchTextCaseSensitive" contentDisplay="GRAPHIC_ONLY" graphicTextGap="0.0" mnemonicParsing="false" GridPane.columnIndex="2" GridPane.rowIndex="1">
                     <graphic>
                         <ImageView blendMode="DARKEN" pickOnBounds="true" preserveRatio="true">
@@ -87,8 +105,22 @@
                         </ImageView>
                     </graphic>
                 </CheckBox>
-                <Button fx:id="cmdStop" cancelButton="true" mnemonicParsing="false" onAction="#onCmdStop" prefWidth="60.0" text="Stop" GridPane.columnIndex="4" GridPane.rowIndex="1" />
-            <CheckBox fx:id="optSearchTextRegex" mnemonicParsing="false" text="RegEx" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                <CheckBox fx:id="optSearchWholeWords" mnemonicParsing="false" text="Words" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                <CheckBox fx:id="optSearchTextRegex" mnemonicParsing="false" text="RegEx" GridPane.columnIndex="4" GridPane.rowIndex="1" />
+                <HBox prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="3">
+                    <children>
+                        <Button fx:id="cmdStart" defaultButton="true" mnemonicParsing="false" onAction="#onCmdStart" prefWidth="60.0" text="Search">
+                            <font>
+                                <Font name="System Bold" size="12.0" />
+                            </font>
+                        </Button>
+                        <Button fx:id="cmdStop" cancelButton="true" mnemonicParsing="false" onAction="#onCmdStop" prefWidth="60.0" text="Stop">
+                     <HBox.margin>
+                        <Insets left="12.0" />
+                     </HBox.margin></Button>
+                    </children>
+                </HBox>
+            <HBox spacing="3.0" GridPane.columnIndex="4" />
             </children>
             <VBox.margin>
                 <Insets left="12.0" right="12.0" top="12.0" />
@@ -100,7 +132,7 @@
                     <columns>
                         <TableColumn id="filename" fx:id="colFilename" editable="false" maxWidth="300.0" minWidth="30.0" prefWidth="-1.0" text="Name" />
                         <TableColumn id="folder" fx:id="colFolder" editable="false" maxWidth="1000.0" minWidth="50.0" prefWidth="-1.0" text="Location" />
-                        <TableColumn id="modified" fx:id="colLastModified" editable="false" maxWidth="300.0" minWidth="20.0" prefWidth="-1.0" text="Last modified" />
+                        <TableColumn id="lastModified" fx:id="colLastModified" editable="false" maxWidth="300.0" minWidth="20.0" prefWidth="-1.0" text="Last modified" />
                     </columns>
                     <columnResizePolicy>
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

@@ -22,6 +22,8 @@ public class Wayfarer extends Application {
 
     static {
         System.setProperty("java.util.logging.config.file", "logging.properties");
+        Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler());
+        LOG.info("Default Uncaught Exception Handler Set");
     }
 
     @Override
@@ -61,11 +63,9 @@ public class Wayfarer extends Application {
      *
      * @param args the command line arguments
      */
-    public static void main(String[] args) {
-        Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler());
-        LOG.info("Default Uncaught Exception Handler Set");
-        launch(args);
-    }
+//    public static void main(String[] args) {
+//        launch(args);
+//    }
     
     private static class UncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
         @Override

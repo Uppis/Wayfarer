@@ -7,20 +7,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.text.NumberFormat;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -39,6 +33,7 @@ import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.ToolBar;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
@@ -52,7 +47,6 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 import javafx.util.StringConverter;
-import javafx.util.converter.LocalDateTimeStringConverter;
 
 /**
  *
@@ -69,13 +63,11 @@ public class WayfarerPane implements Initializable {
 
     private static final StringConverter<File> FILE_TO_STRING_CONVERTER = new FileToStringConverter();
     private static final StringConverter<String> DUMMY_STRING_CONVERTER = new DummyStringConverter();
-    private static final LocalDateTimeStringConverter LOCALDATETIME_CONVERTER = new LocalDateTimeStringConverter();
     private static final File CURRENT_FOLDER = new File(".").getAbsoluteFile();
 
     private Window mainWindow;
     private AboutBox aboutBox;
 
-    private final NumberFormat sizeFormatter = NumberFormat.getNumberInstance();
     private final UserPreferences userPrefs = new UserPreferences(WayfarerPane.class);
     private final Clipboard clipboard = Clipboard.getSystemClipboard();
     private final EventHandler<KeyEvent> keyEventHandler = this::handleKeyEvents;
@@ -83,9 +75,13 @@ public class WayfarerPane implements Initializable {
     private DirectoryChooser dirChooser;
     private SearchTask searcher;
     private SearchResult searchResults;
+    private int maxItemsInCombos;
+    private final SearchHistory history = new SearchHistory();
 
     @FXML
     private Pane pnlWayfarer;
+    @FXML
+    private ToolBar toolbar;
     @FXML
     private ComboBox<String> fldFileMask;
     @FXML
@@ -100,6 +96,8 @@ public class WayfarerPane implements Initializable {
     private Button cmdBrowseRoot;
     @FXML
     private CheckBox optSearchTextCaseSensitive;
+    @FXML
+    private CheckBox optSearchWholeWords;
     @FXML
     private CheckBox optSearchTextRegex;
     @FXML
@@ -121,30 +119,20 @@ public class WayfarerPane implements Initializable {
     @FXML
     private Label fldStatus;
     @FXML
-    private TableColumn<MatchedFile, String> colFilename;
+    private Button cmdBack;
     @FXML
-    private TableColumn<MatchedFile, String> colFolder;
-    @FXML
-    private TableColumn<MatchedFile, String> colLastModified;
-    private int maxItemsInCombos;
+    private Button cmdForward;
 
+    
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         aboutBox = new AboutBox(pnlWayfarer, getClass());
-        sizeFormatter.setMaximumFractionDigits(1);
         dirChooser = new DirectoryChooser();
-//        searchResults = new HashMap<>();
         fldRoot.setConverter(FILE_TO_STRING_CONVERTER);
         loadStateFromPrefs();
-//        lstFilesFound.getColumns().forEach((TableColumn<MatchedFile, ?> t) -> {
-//            ((TableColumn<MatchedFile, String>) t).setCellValueFactory(WayfarerPane::getCellValue);
-//        });
-        colFilename.setCellValueFactory(this::matchedFileCellValueFactory);
-        colFolder.setCellValueFactory(this::matchedFileCellValueFactory);
-        colLastModified.setCellValueFactory(this::matchedFileCellValueFactory);
-//        colLastModified.setComparator((FileTime arg0, FileTime arg1) -> {
-//            return 0; //To change body of generated lambdas, choose Tools | Templates.
-//        });
+        lstFilesFound.getColumns().forEach((TableColumn<MatchedFile, ?> t) -> {
+            ((TableColumn<MatchedFile, String>) t).setCellValueFactory(this::matchedFileCellValueFactory);
+        });
         cmdStart.defaultButtonProperty().bind(new DefaultButtonBinding(lstFilesFound));
         lstFilesFound.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         lstFilesFound.getSelectionModel().selectedItemProperty().addListener(this::selectHittedFile);
@@ -155,6 +143,15 @@ public class WayfarerPane implements Initializable {
         mnuCopyMatchedFilePath.disableProperty().bind(fileActionDisabled);
         mnuOpenMatchedFile.disableProperty().bind(fileActionDisabled);
         mnuOpenMatchedFileFolder.disableProperty().bind(fileActionDisabled);
+//        optSearchTextRegex.disableProperty().bind(optSearchWholeWords.selectedProperty());
+        optSearchWholeWords.selectedProperty().addListener((ObservableValue<? extends Boolean> obs, Boolean oldV, Boolean newV) -> {
+            setDependentOption(optSearchTextRegex, newV);
+        });
+        optSearchTextRegex.selectedProperty().addListener((ObservableValue<? extends Boolean> obs, Boolean oldV, Boolean newV) -> {
+            setDependentOption(optSearchWholeWords, newV);
+        });
+        cmdBack.disableProperty().bind(history.bohProperty());
+        cmdForward.disableProperty().bind(history.eohProperty());
     }
 
     void setAppContext(AppContext ctx) {
@@ -184,15 +181,16 @@ public class WayfarerPane implements Initializable {
     }
 
     private String matchedFileToColumns(MatchedFile row, TableColumn col) {
-        String ret = "";
-        if (col == colFilename) {
-            ret = row.getFile().getFileName().toString();
-        } else if (col == colFolder) {
-            ret = row.getFile().getParent().toString();
-        } else if (col == colLastModified) {
-            ret = Util.getDateTimeFormatted(row.getAttrs().lastModifiedTime().toInstant());
+        switch (col.getId()) {
+            case "filename":
+                return row.getFile().getFileName().toString();
+            case "folder":
+                return row.getFile().getParent().toString();
+            case "lastModified":
+                return Util.getDateTimeFormatted(row.getAttrs().lastModifiedTime().toInstant());
+            default:
+                return "";
         }
-        return ret;
     }
 
     private void selectHittedFile(ObservableValue<? extends MatchedFile> ov, MatchedFile oldValue, MatchedFile newValue) {
@@ -200,53 +198,8 @@ public class WayfarerPane implements Initializable {
         fldStatus.setText("");
         if (newValue != null) {
             fldStatus.setText("Selected item " + newValue.getAttrs().size() + " bytes, " + newValue.getTotalNbrofHits() + " hits");
-            showHits(newValue.getLines());
+            fldHits.getEngine().loadContent(Util.matchedLinesToRichText(newValue.getLines()));
         }
-    }
-
-    private void showHits(List<MatchedLine> lines) {
-        Optional<String> fullContent = lines.stream().map(this::lineToText).reduce((contentSoFar, line) -> {
-            return contentSoFar + line;
-        });
-        if (fullContent.isPresent()) {
-            StringBuilder buf = new StringBuilder();
-            buf.append("<style> em { font-style: normal; font-weight: 900; color: red; } </style>");
-            buf.append("<pre>");
-            buf.append(fullContent.get());
-            buf.append("</pre>");
-            fldHits.getEngine().loadContent(buf.toString());
-            buf.append("</pre>");
-        }
-    }
-
-    private String lineToText(MatchedLine line) {
-        StringBuilder buf = new StringBuilder();
-        buf.append(String.valueOf(line.getLineNbr()));
-        buf.append("\t");
-        Iterator<Integer[]> matches = line.getMatches().iterator();
-        Integer[] match = matches.hasNext() ? matches.next() : null;
-        String li = line.getLine();
-        for (int i = 0; i < li.length(); i++) {
-            if (match != null && i == match[0]) {
-                buf.append("<em>");
-            }
-            char ch = li.charAt(i);
-            if (ch == '&') {
-                buf.append("&amp;");
-            } else if (ch == '<') {
-                buf.append("&lt;");
-            } else if (ch == '>') {
-                buf.append("&gt;");
-            } else {
-                buf.append(ch);
-            }
-            if (match != null && i == match[1]) {
-                buf.append("</em>");
-                match = matches.hasNext() ? matches.next() : null;
-            }
-        }
-        buf.append("\n");
-        return buf.toString();
     }
 
     private void showSummary() {
@@ -284,20 +237,19 @@ public class WayfarerPane implements Initializable {
 
     @FXML
     private void onMnuCopySelected(ActionEvent event) {
-        ObservableList<MatchedFile> selectedItems = lstFilesFound.getSelectionModel().getSelectedItems();
         List<TableColumn<MatchedFile, ?>> columns = lstFilesFound.getColumns();
         StringBuilder buf = new StringBuilder();
-        boolean newLine = true;
-        for (MatchedFile f : selectedItems) {
+        boolean lineIsEmpty = true;
+        for (MatchedFile f : lstFilesFound.getSelectionModel().getSelectedItems()) {
             for (TableColumn col : columns) {
-                if (!newLine) {
+                if (!lineIsEmpty) {
                     buf.append('\t');
                 }
                 buf.append(matchedFileToColumns(f, col));
-                newLine = false;
+                lineIsEmpty = false;
             }
             buf.append('\n');
-            newLine = true;
+            lineIsEmpty = true;
         }
         if (buf.length() > 0) {
             ClipboardContent content = new ClipboardContent();
@@ -350,19 +302,18 @@ public class WayfarerPane implements Initializable {
                 false,
                 fldSearchText.getValue(),
                 optSearchTextCaseSensitive.isSelected(),
+                optSearchWholeWords.isSelected(),
                 optSearchTextRegex.isSelected()
         );
-        searcher = new SearchTask(
-                crit,
-                searchResults);
+        searcher = new SearchTask(crit, searchResults);
         searcher.setWorkerStateEventHandler(this::handleWorkerStateEvent);
         Thread th = new Thread(searcher);
         th.setDaemon(true);
         th.start();
-        rememberValue(fldRoot);
-        rememberValue(fldFileMask);
-        rememberValue(fldSearchText);
-//        cmdStart.setDisable(false);
+        Util.rememberValue(fldRoot, maxItemsInCombos);
+        Util.rememberValue(fldFileMask, maxItemsInCombos);
+        Util.rememberValue(fldSearchText, maxItemsInCombos);
+        history.maybeAddSearch(crit);
     }
 
     private void resetOutputs() {
@@ -378,6 +329,22 @@ public class WayfarerPane implements Initializable {
         searcher.cancelSearch();
     }
 
+    @FXML
+    private void onCmdBack(ActionEvent event) {
+        if (history.hasPrev()) {
+            SearchCriteria prev = history.getPrev();
+            setSearchCriteria(prev);
+        }
+    }
+
+    @FXML
+    private void onCmdForward(ActionEvent event) {
+        if (history.hasNext()) {
+            SearchCriteria next = history.getNext();
+            setSearchCriteria(next);
+        }
+    }
+
     private void showProgress(Path path, MatchedFile matchedFile) {
         Platform.runLater(() -> {
             if (matchedFile != null) {
@@ -389,37 +356,14 @@ public class WayfarerPane implements Initializable {
         });
     }
 
-    private <T> void rememberValue(ComboBox<T> combo) {
-        T value = combo.getValue();
-        if (value != null) {
-            ObservableList<T> items = combo.getItems();
-            int ix = items.indexOf(value);
-            if (ix != 0) {  // no need to do anything, if value already in the beginning of the list
-                if (ix > 0) {   // value found further down the list => move up to first
-                    items.remove(value);
-                } else if (items.size() == maxItemsInCombos) {
-                    items.remove(items.size() - 1); // remove last
-                }
-                items.add(0, value);
-                combo.getSelectionModel().select(value);
-            }
-        }
-    }
-
     private File getRootFolder() {
         File ret = fldRoot.getValue();
-        if (ret == null) {
-            ret = CURRENT_FOLDER;
-        }
-        return ret;
+        return ret != null ? ret : CURRENT_FOLDER;
     }
 
     private String getFileMask() {
         String ret = fldFileMask.getValue();
-        if (ret == null) {
-            ret = "*.*";
-        }
-        return ret;
+        return ret != null ? ret : "*.*";
     }
 
     private void loadStateFromPrefs() {
@@ -427,9 +371,9 @@ public class WayfarerPane implements Initializable {
             maxItemsInCombos = Integer.parseInt(userPrefs.getPreference(PREF_NODE_SETTINGS, "maxItemsInCombos", "12"));
             pnlWayfarer.setPrefHeight(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stageheight", "600.0")));
             pnlWayfarer.setPrefWidth(Double.parseDouble(userPrefs.getPreference(PREF_NODE_SETTINGS, "stagewidth", "1000.0")));
-            initCombo(fldFileMask, PREF_NODE_RECENT_FILE_MASKS, DUMMY_STRING_CONVERTER);
-            initCombo(fldSearchText, PREF_NODE_RECENT_SEARCH_TEXTS, DUMMY_STRING_CONVERTER);
-            initCombo(fldRoot, PREF_NODE_RECENT_ROOTS, FILE_TO_STRING_CONVERTER);
+            Util.initCombo(fldFileMask, userPrefs.loadRecentItems(PREF_NODE_RECENT_FILE_MASKS, DUMMY_STRING_CONVERTER));
+            Util.initCombo(fldSearchText, userPrefs.loadRecentItems(PREF_NODE_RECENT_SEARCH_TEXTS, DUMMY_STRING_CONVERTER));
+            Util.initCombo(fldRoot, userPrefs.loadRecentItems(PREF_NODE_RECENT_ROOTS, FILE_TO_STRING_CONVERTER));
         } catch (BackingStoreException ex) {
             LOG.warning(supply("Failed to load preferences: {0}", ex));
         }
@@ -447,14 +391,6 @@ public class WayfarerPane implements Initializable {
             String msg = "Failed to save preferences: " + ex;
             new Alert(Alert.AlertType.WARNING, msg).showAndWait();
             LOG.warning(msg);
-        }
-    }
-
-    private <T> void initCombo(ComboBox<T> combo, String prefName, StringConverter<T> prefConverter) throws BackingStoreException {
-        ObservableList<T> content = FXCollections.observableArrayList(userPrefs.loadRecentItems(prefName, prefConverter));
-        combo.setItems(content);
-        if (!content.isEmpty()) {
-            combo.getSelectionModel().selectFirst();
         }
     }
 
@@ -490,13 +426,13 @@ public class WayfarerPane implements Initializable {
             setSearchState(false);
         } else if (WorkerStateEvent.WORKER_STATE_CANCELLED.equals(etype)) {
             LOG.log(Level.INFO, "Worker cancelled");
-//            searcher.cancelSearch();
             setSearchState(false);
         }
     }
 
     private void setSearchState(boolean searching) {
         mainWindow.getScene().setCursor(searching ? Cursor.WAIT : Cursor.DEFAULT);
+        toolbar.setDisable(searching);
         cmdStart.setDisable(searching);
         cmdStop.setDisable(!searching);
         cmdBrowseRoot.setDisable(searching);
@@ -504,13 +440,16 @@ public class WayfarerPane implements Initializable {
         fldSearchText.setDisable(searching);
         fldRoot.setDisable(searching);
         optSearchTextCaseSensitive.setDisable(searching);
-        optSearchTextRegex.setDisable(searching);
-        if (!searching) {
+        if (searching) {
+            optSearchWholeWords.setDisable(true);
+            optSearchTextRegex.setDisable(true);
+        } else {
+            setDependentOption(optSearchWholeWords, optSearchTextRegex.isSelected());
+            setDependentOption(optSearchTextRegex, optSearchWholeWords.isSelected());
             fldStatus.setText("");
             showSummary();
             if (!lstFilesFound.getItems().isEmpty()) {
                 lstFilesFound.requestFocus();
-//                if (lstFilesFound.getSelectionModel().getSelectedItem() == null) {
                 if (lstFilesFound.getSelectionModel().getSelectedItems().isEmpty()) {
                     lstFilesFound.getSelectionModel().selectFirst();
                 }
@@ -531,19 +470,20 @@ public class WayfarerPane implements Initializable {
         }
     }
 
-    private class DefaultButtonBinding extends BooleanBinding {
+    private void setSearchCriteria(SearchCriteria from) {
+        fldRoot.setValue(from.getRootFolder().toFile());
+        fldFileMask.setValue(from.getFilemask());
+        fldSearchText.setValue(from.getTxtToSearch());
+        optSearchTextCaseSensitive.setSelected(from.isSearchTextCaseSensitive());
+        optSearchWholeWords.setSelected(from.isWholeWordSearch());
+        optSearchTextRegex.setSelected(from.isSearchTextRegex());
+        fldFileMask.requestFocus();
+    }
 
-        private final TableView table;
-
-        DefaultButtonBinding(TableView table) {
-            this.table = table;
-            bind(table.focusedProperty());
-            bind(table.getItems());
+    private void setDependentOption(CheckBox forOpt, boolean isOtherSelected) {
+        if (isOtherSelected) {
+            forOpt.setSelected(false);
         }
-
-        @Override
-        protected boolean computeValue() {
-            return !table.isFocused() || table.getItems().isEmpty();
-        }
+        forOpt.setDisable(isOtherSelected);
     }
 }

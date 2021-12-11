@@ -27,12 +27,13 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
 
     private static final String PATH_MATCH_PREFIX_GLOB = "glob:**/";
     private static final String PATH_MATCH_PREFIX_REGEX = "regex:";
-
+    private static final String EXTRA_WORD_CHARS = "_";
     private static final Charset CHARSET = Charset.forName(System.getProperty("file.encoding"));
     private static final CharsetDecoder DECODER = CHARSET.newDecoder().onUnmappableCharacter(CodingErrorAction.IGNORE).onMalformedInput(CodingErrorAction.IGNORE);
 
     private final List<PathMatcher> fileMatchers;
     private final boolean ignoreCase;
+    private final boolean wholeWordSearch;
     private final String txtToSearchPlain;
     private final Pattern txtToSearchRegex;
     private final SearchResult searchResults;
@@ -41,6 +42,7 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
     public FileTreeWalker(SearchCriteria crit, SearchResult searchRes) {
         fileMatchers = getMatchers(crit);
         ignoreCase = !crit.isSearchTextCaseSensitive();
+        wholeWordSearch = crit.isWholeWordSearch();
         String searchText = crit.getTxtToSearch();
         if (searchText == null || searchText.isEmpty()) {
             txtToSearchPlain = null;
@@ -74,8 +76,7 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
         searchResults.report(file);
         searchResults.incrementNbrofFilesChecked();
         if (pathMatches(file)) {
-            try {
-                FileChannel channel = FileChannel.open(file, StandardOpenOption.READ);
+            try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ)) {
                 LineNumberReader reader = new LineNumberReader(Channels.newReader(channel, DECODER, -1));
                 String line = reader.readLine();
                 while (line != null && result != FileVisitResult.TERMINATE) {
@@ -143,7 +144,7 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
         int pos = 0;
         int len = txtToSearchPlain.length();
         do {
-            if (line.regionMatches(ignoreCase, pos, txtToSearchPlain, 0, len)) {
+            if (isPlainMatch(line, pos, len)) {
                 if (matchingLine == null) { // First match in this line of text
                     MatchedFile match = searchResults.matchFoundInFile(file, attrs);
                     matchingLine = match.matchingLineFound(line, lineNumber);
@@ -153,5 +154,19 @@ public class FileTreeWalker extends SimpleFileVisitor<Path> {
                 pos++;
             }
         } while (pos + len <= line.length());
+    }
+
+    private boolean isPlainMatch(String line, int pos, int len) {
+        boolean ret = line.regionMatches(ignoreCase, pos, txtToSearchPlain, 0, len);
+        if (ret && wholeWordSearch) {
+            boolean isWordBeg = pos == 0 || !isWordChar(line.charAt(pos - 1));
+            boolean isWordEnd = pos + len == line.length() || !isWordChar(line.charAt(pos + len));
+            ret = isWordBeg && isWordEnd;
+        }
+        return ret;
+    }
+
+    private static boolean isWordChar(char ch) {
+        return Character.isLetterOrDigit(ch) || EXTRA_WORD_CHARS.indexOf(ch) >= 0;
     }
 }
